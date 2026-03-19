@@ -242,7 +242,7 @@ function App() {
         </div>
 
         {/* Summary Cards */}
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:10}}>
+        <div className="grid-summary">
           {/* Buy & Hold Card */}
           <div style={{background:T.bgCard, border:`1px solid ${T.border}`, borderRadius:12, padding:"14px 16px"}}>
             <div style={{fontSize:10.5, textTransform:"uppercase", letterSpacing:"0.08em", color:T.gold, fontWeight:600, marginBottom:6, fontFamily:FA}}>Buy & Hold</div>
@@ -347,51 +347,64 @@ function App() {
             <Tog label="Log Scale" checked={logScale} onChange={sLS} color={T.gold} T={T}/>
           </div>
 
-          <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMuted,
-                       fontWeight:600, marginBottom:12, paddingTop:8, borderTop:`1px solid ${T.borderSub}`}}>
-            Strategy Parameters
-          </div>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px 28px", marginBottom:20}}>
-            <Sld label="Sell: % Off Highs"          value={sellPct}  onChange={sSP} min={1}   max={50}  step={1}   color={T.red}        suffix="%" T={T}/>
-            <div>
-              <Rad label="Re-Entry Strategy" options={[
-                {label:"% Off Low", value:"pctOffLow"},
-                {label:"Back to Exit", value:"backToExit"},
-                {label:"New High", value:"newHigh"}
-              ]} value={buyStrategy} onChange={setBuyStrategy} color={T.green} T={T}/>
-              {buyStrategy === "pctOffLow" && (
-                <div style={{marginTop:14}}>
-                  <Sld label="Buy: % Off Post-Sale Low" value={buyPct} onChange={sBP} min={1} max={50} step={1} color={T.green} suffix="%" T={T}/>
-                </div>
-              )}
-              {buyStrategy === "backToExit" && (
-                <div style={{marginTop:10, fontSize:11, color:T.textMuted, fontStyle:"italic", lineHeight:1.5}}>
-                  Re-enters when price recovers to the sell price
-                </div>
-              )}
-              {buyStrategy === "newHigh" && (
-                <div style={{marginTop:10, fontSize:11, color:T.textMuted, fontStyle:"italic", lineHeight:1.5}}>
-                  Re-enters when market makes a new all-time high
-                </div>
-              )}
+          {/* Sell Rules / Buy Rules cards */}
+          <div className="grid-2col">
+            {/* ── Sell Rules ── */}
+            <div style={{background:T.bgCard, borderRadius:10, padding:"14px 16px", border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.red,
+                           fontWeight:700, marginBottom:14, fontFamily:FA}}>Sell Rules</div>
+              <div style={{display:"flex", flexDirection:"column", gap:20}}>
+                <Sld label="Sell: % Off Highs" value={sellPct} onChange={sSP} min={1} max={50} step={1} color={T.red} suffix="%" T={T}/>
+                <Sld label="Min Days Before Re-Entry" value={minDays} onChange={sMD} min={0} max={365} step={5} color={T.sage} suffix="d" T={T}/>
+              </div>
             </div>
-            <Sld label="Min Days Before Re-Entry"    value={minDays}  onChange={sMD} min={0}   max={365} step={5}   color={T.sage}       suffix="d" T={T}/>
-            <Sld label="Cash Interest Rate"          value={cashRate} onChange={sCR} min={0}   max={5}   step={0.1} color={T.goldBright} suffix="%" format={v => v.toFixed(1)+"%"} T={T}/>
+
+            {/* ── Buy Rules ── */}
+            <div style={{background:T.bgCard, borderRadius:10, padding:"14px 16px", border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.green,
+                           fontWeight:700, marginBottom:14, fontFamily:FA}}>Buy Rules</div>
+              <div style={{display:"flex", flexDirection:"column", gap:20}}>
+                <div>
+                  <Rad label="Re-Entry Strategy" options={[
+                    {label:"% Off Low", value:"pctOffLow"},
+                    {label:"Back to Exit", value:"backToExit"},
+                    {label:"New High", value:"newHigh"}
+                  ]} value={buyStrategy} onChange={setBuyStrategy} color={T.green} T={T}/>
+                  {buyStrategy === "pctOffLow" && (
+                    <div style={{marginTop:14}}>
+                      <Sld label="Buy: % Off Post-Sale Low" value={buyPct} onChange={sBP} min={1} max={50} step={1} color={T.green} suffix="%" T={T}/>
+                    </div>
+                  )}
+                  {buyStrategy === "backToExit" && (
+                    <div style={{marginTop:10, fontSize:11, color:T.textMuted, fontStyle:"italic", lineHeight:1.5}}>
+                      Re-enters when price recovers to the sell price
+                    </div>
+                  )}
+                  {buyStrategy === "newHigh" && (
+                    <div style={{marginTop:10, fontSize:11, color:T.textMuted, fontStyle:"italic", lineHeight:1.5}}>
+                      Re-enters when market sets a new all-time high
+                    </div>
+                  )}
+                </div>
+                <Sld label="Cash Interest Rate" value={cashRate} onChange={sCR} min={0} max={5} step={0.1} color={T.goldBright} suffix="%" format={v => v.toFixed(1)+"%"} T={T}/>
+              </div>
+            </div>
           </div>
 
-          <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.textMuted,
-                       fontWeight:600, marginBottom:12, paddingTop:8, borderTop:`1px solid ${T.borderSub}`}}>
-            Tax Rates
-          </div>
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px 28px"}}>
-            <Sld label="Short-Term Cap Gains (<1yr)" value={stRate} onChange={sST} min={0} max={50} step={1} color={T.red} suffix="%" T={T}/>
-            <div>
-              <Rad label="Long-Term Cap Gains (≥1yr)"
-                   options={[{label:"0%",value:0},{label:"15%",value:15},{label:"20%",value:20}]}
-                   value={ltRate} onChange={sLT} color={T.gold} T={T}/>
-              <div style={{marginTop:10}}>
-                <Tog label={<span>+3.8% NIIT <span style={{fontSize:10, color:T.textMuted}}>(net investment income)</span></span>}
-                     checked={niit} onChange={sN} color={T.gold} T={T}/>
+          {/* ── Tax Rates ── */}
+          <div style={{background:T.bgCard, borderRadius:10, padding:"14px 16px", border:`1px solid ${T.border}`, marginTop:12}}>
+            <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.gold,
+                         fontWeight:700, marginBottom:14, fontFamily:FA}}>Tax Rates</div>
+            <div className="grid-tax">
+              <Sld label="Short-Term Cap Gains (<1yr)" value={stRate} onChange={sST} min={0} max={50} step={1} color={T.red} suffix="%" T={T}/>
+              <div>
+                <Rad label="Long-Term Cap Gains (≥1yr)"
+                     options={[{label:"0%",value:0},{label:"15%",value:15},{label:"20%",value:20}]}
+                     value={ltRate} onChange={sLT} color={T.gold} T={T}/>
+                <div style={{marginTop:10}}>
+                  <Tog label={<span>+3.8% NIIT <span style={{fontSize:10, color:T.textMuted}}>(net investment income)</span></span>}
+                       checked={niit} onChange={sN} color={T.gold} T={T}/>
+                </div>
               </div>
             </div>
           </div>
@@ -404,7 +417,7 @@ function App() {
           </div>
 
           {/* Best/Worst Days */}
-          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:16}}>
+          <div className="grid-2col" style={{marginBottom:16}}>
             {/* Best Days Missed */}
             <div style={{background:T.bgCard, borderRadius:10, padding:"12px 14px", border:`1px solid ${T.border}`}}>
               <div style={{fontSize:11, fontWeight:600, color:T.red, marginBottom:8, fontFamily:FA}}>Best Days Missed While in Cash</div>
@@ -480,7 +493,7 @@ function App() {
 
             {rolling && !rollingStale && (
               <div>
-                <div style={{display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:12, marginBottom:12}}>
+                <div className="grid-4col" style={{marginBottom:12}}>
                   <div style={{textAlign:"center", background:T.bgCard, borderRadius:8, padding:"10px 8px", border:`1px solid ${T.border}`}}>
                     <div style={{fontSize:9.5, color:T.textMuted, marginBottom:4}}>{rollingYrs}-Year Windows</div>
                     <div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.gold}}>{rolling.total}</div>
