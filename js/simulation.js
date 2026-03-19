@@ -141,6 +141,7 @@ function simulate(daily, o) {
   var sellPct = o.sellPct, buyPct = o.buyPct, minDays = o.minDays;
   var cashRate = o.cashRate, stRate = o.stRate, ltRate = o.ltRate;
   var niit = o.niit, reinvestDivs = o.reinvestDivs;
+  var buyStrategy = o.buyStrategy || "pctOffLow";  // "pctOffLow" | "backToExit" | "newHigh"
 
   var eLt = ltRate + (niit ? 3.8 : 0);
   var st = daily[0].price;
@@ -160,6 +161,8 @@ function simulate(daily, o) {
   var tP = 0;              // total tax paid
   var tDO = 0;             // total days out of market
   var oD = [];             // out-days per exit
+  var sellPrice = 0;       // price at last sell (for backToExit)
+  var athAtSell = 0;       // all-time high at last sell (for newHigh)
 
   var ev = [];                      // buy/sell events
   var dR = new Array(daily.length); // daily results
@@ -202,6 +205,8 @@ function simulate(daily, o) {
         sh = 0;
         dS = 0;
         psL = price;
+        sellPrice = price;   // remember exit price
+        athAtSell = ath;     // remember ATH at time of sell
       }
     } else {
       // Out of market: earn cash interest
@@ -210,8 +215,18 @@ function simulate(daily, o) {
       tDO++;
       psL = Math.min(psL, price);
 
-      // Check buy trigger
-      if (buyPct > 0 && dS >= minDays && psL < Infinity && (price - psL) / psL >= buyPct / 100) {
+      // Check buy trigger based on strategy
+      var buyTriggered = false;
+      if (dS >= minDays) {
+        if (buyStrategy === "pctOffLow") {
+          buyTriggered = buyPct > 0 && psL < Infinity && (price - psL) / psL >= buyPct / 100;
+        } else if (buyStrategy === "backToExit") {
+          buyTriggered = price >= sellPrice;
+        } else if (buyStrategy === "newHigh") {
+          buyTriggered = price >= athAtSell;
+        }
+      }
+      if (buyTriggered) {
         sh = ca / price;
         bas = ca;
         bD = date;

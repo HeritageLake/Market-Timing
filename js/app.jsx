@@ -10,23 +10,8 @@
  *   simulation.js (simulate, rollingAnalysis, buildDaily, etc.)
  */
 
-const {useState, useMemo, useEffect, useRef, useCallback} = React;
+const {useState, useMemo, useEffect} = React;
 const {Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea, ReferenceLine, Legend, ComposedChart} = Recharts;
-
-// ─── Debounce Hook ──────────────────────────────────────────
-// Delays expensive recalculations while sliders are being dragged.
-// The displayed value updates instantly; the simulation recalculates
-// after the user stops adjusting (default 200ms).
-
-function useDebounced(value, delay) {
-  delay = delay || 200;
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debounced;
-}
 
 // ─── UI Components ──────────────────────────────────────────
 
@@ -128,11 +113,12 @@ function App() {
   const [dark, setDark] = useState(true);
   const T = dark ? THEMES.dark : THEMES.light;
 
-  // Strategy parameters (instant values for slider display)
+  // Strategy parameters
   const [sellPct, sSP]   = useState(10);
   const [buyPct, sBP]    = useState(8);
   const [minDays, sMD]   = useState(60);
   const [cashRate, sCR]  = useState(2);
+  const [buyStrategy, setBuyStrategy] = useState("pctOffLow"); // "pctOffLow" | "backToExit" | "newHigh"
 
   // Tax rates
   const [stRate, sST]    = useState(37);
@@ -144,23 +130,15 @@ function App() {
   const [logScale, sLS]     = useState(true);
   const [startYear, sSY]    = useState(1975);
 
-  // Debounced values — simulation only recalculates after user stops adjusting
-  const dSellPct  = useDebounced(sellPct);
-  const dBuyPct   = useDebounced(buyPct);
-  const dMinDays  = useDebounced(minDays);
-  const dCashRate = useDebounced(cashRate);
-  const dStRate   = useDebounced(stRate);
-
   // Build daily data (only changes when start year changes)
   const daily = useMemo(() => buildDaily(RAW_DAILY, startYear), [startYear]);
 
-  // Run simulation with debounced parameters
+  // Run simulation — recalculates on every parameter change
   const sim = useMemo(
     () => simulate(daily, {
-      sellPct:dSellPct, buyPct:dBuyPct, minDays:dMinDays,
-      cashRate:dCashRate, stRate:dStRate, ltRate, niit, reinvestDivs
+      sellPct, buyPct, minDays, cashRate, stRate, ltRate, niit, reinvestDivs, buyStrategy
     }),
-    [daily, dSellPct, dBuyPct, dMinDays, dCashRate, dStRate, ltRate, niit, reinvestDivs]
+    [daily, sellPct, buyPct, minDays, cashRate, stRate, ltRate, niit, reinvestDivs, buyStrategy]
   );
 
   const {dayResults, events, taxPaid, basis, unrealized,
@@ -177,8 +155,7 @@ function App() {
   const runRolling = (yrs) => {
     const y = yrs || rollingYrs;
     setRolling(rollingAnalysis(allDaily, {
-      sellPct:dSellPct, buyPct:dBuyPct, minDays:dMinDays,
-      cashRate:dCashRate, stRate:dStRate, ltRate, niit, reinvestDivs
+      sellPct, buyPct, minDays, cashRate, stRate, ltRate, niit, reinvestDivs, buyStrategy
     }, y));
     setRollingStale(false);
   };
@@ -186,14 +163,13 @@ function App() {
   const changeRollingYrs = (y) => {
     sRY(y);
     setRolling(rollingAnalysis(allDaily, {
-      sellPct:dSellPct, buyPct:dBuyPct, minDays:dMinDays,
-      cashRate:dCashRate, stRate:dStRate, ltRate, niit, reinvestDivs
+      sellPct, buyPct, minDays, cashRate, stRate, ltRate, niit, reinvestDivs, buyStrategy
     }, y));
     setRollingStale(false);
   };
 
   useEffect(() => { setRollingStale(true); },
-    [dSellPct, dBuyPct, dMinDays, dCashRate, dStRate, ltRate, niit, reinvestDivs]);
+    [sellPct, buyPct, minDays, cashRate, stRate, ltRate, niit, reinvestDivs, buyStrategy]);
 
   // Chart data: sample monthly + overlay buy/sell markers
   const chartData = useMemo(() => {
@@ -274,6 +250,7 @@ function App() {
             <div style={{display:"flex", gap:12, marginTop:8, flexWrap:"wrap"}}>
               <span><span style={ms}>Total </span><span style={vs(T.gold)}>{pct((last.bh-INI)/INI)}</span></span>
               <span><span style={ms}>CAGR </span><span style={vs(T.gold)}>{pct(bhCagr)}</span></span>
+              <span><span style={ms}>Max DD </span><span style={vs(T.red)}>{(bhMaxDD*100).toFixed(1)}%</span></span>
             </div>
             <div style={{marginTop:8, paddingTop:8, borderTop:`1px solid ${T.borderSub}`}}>
               <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
@@ -291,12 +268,13 @@ function App() {
             <div style={{display:"flex", gap:12, marginTop:8, flexWrap:"wrap"}}>
               <span><span style={ms}>Total </span><span style={vs(pC)}>{pct((last.portfolio-INI)/INI)}</span></span>
               <span><span style={ms}>CAGR </span><span style={vs(pC)}>{pct(pCagr)}</span></span>
+              <span><span style={ms}>Max DD </span><span style={vs(pMaxDD < bhMaxDD ? T.sage : T.red)}>{(pMaxDD*100).toFixed(1)}%</span></span>
             </div>
             <div style={{marginTop:8, paddingTop:8, borderTop:`1px solid ${T.borderSub}`}}>
               <div style={{display:"flex", gap:12, flexWrap:"wrap"}}>
                 <span><span style={ms}>If sold </span><span style={vs(pC)}>{fmt(pPostTax)}</span></span>
                 <span><span style={ms}>Tax </span><span style={vs(T.red)}>{fmt(pTax)}</span></span>
-                <span><span style={ms}>Realized </span><span style={vs(T.textSec)}>{fmt(taxPaid)}</span></span>
+                <span><span style={ms}>Rate </span><span style={vs(T.textSec)}>{eLt.toFixed(1)}%</span></span>
               </div>
             </div>
           </div>
@@ -374,7 +352,28 @@ function App() {
           </div>
           <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px 28px", marginBottom:20}}>
             <Sld label="Sell: % Off Highs"          value={sellPct}  onChange={sSP} min={1}   max={50}  step={1}   color={T.red}        suffix="%" T={T}/>
-            <Sld label="Buy: % Off Post-Sale Low"   value={buyPct}   onChange={sBP} min={1}   max={50}  step={1}   color={T.green}      suffix="%" T={T}/>
+            <div>
+              <Rad label="Re-Entry Strategy" options={[
+                {label:"% Off Low", value:"pctOffLow"},
+                {label:"Back to Exit", value:"backToExit"},
+                {label:"New High", value:"newHigh"}
+              ]} value={buyStrategy} onChange={setBuyStrategy} color={T.green} T={T}/>
+              {buyStrategy === "pctOffLow" && (
+                <div style={{marginTop:14}}>
+                  <Sld label="Buy: % Off Post-Sale Low" value={buyPct} onChange={sBP} min={1} max={50} step={1} color={T.green} suffix="%" T={T}/>
+                </div>
+              )}
+              {buyStrategy === "backToExit" && (
+                <div style={{marginTop:10, fontSize:11, color:T.textMuted, fontStyle:"italic", lineHeight:1.5}}>
+                  Re-enters when price recovers to the sell price
+                </div>
+              )}
+              {buyStrategy === "newHigh" && (
+                <div style={{marginTop:10, fontSize:11, color:T.textMuted, fontStyle:"italic", lineHeight:1.5}}>
+                  Re-enters when market makes a new all-time high
+                </div>
+              )}
+            </div>
             <Sld label="Min Days Before Re-Entry"    value={minDays}  onChange={sMD} min={0}   max={365} step={5}   color={T.sage}       suffix="d" T={T}/>
             <Sld label="Cash Interest Rate"          value={cashRate} onChange={sCR} min={0}   max={5}   step={0.1} color={T.goldBright} suffix="%" format={v => v.toFixed(1)+"%"} T={T}/>
           </div>
