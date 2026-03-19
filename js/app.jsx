@@ -129,6 +129,7 @@ function App() {
   const [reinvestDivs, sRD] = useState(true);
   const [logScale, sLS]     = useState(true);
   const [startYear, sSY]    = useState(1975);
+  const [showDayDetail, setShowDayDetail] = useState(false);
 
   // Build daily data (only changes when start year changes)
   const daily = useMemo(() => buildDaily(RAW_DAILY, startYear), [startYear]);
@@ -144,7 +145,7 @@ function App() {
   const {dayResults, events, taxPaid, basis, unrealized,
          bhPostTax, bhTax, pPostTax, pTax, pUnrealizedTax,
          totalDaysOut, avgDaysOut, bhMaxDD, pMaxDD,
-         missed10, missed20, missed30, missedList, avoided20} = sim;
+         missed10, missed20, missed30, missedList, avoided10, avoided20, avoided30} = sim;
 
   // Rolling analysis state
   const [rollingYrs, sRY]       = useState(20);
@@ -416,49 +417,87 @@ function App() {
             Market Timing Insights
           </div>
 
-          {/* Best/Worst Days */}
+          {/* Best/Worst Days + Max Drawdown */}
           <div className="grid-2col" style={{marginBottom:16}}>
-            {/* Best Days Missed */}
-            <div style={{background:T.bgCard, borderRadius:10, padding:"12px 14px", border:`1px solid ${T.border}`}}>
-              <div style={{fontSize:11, fontWeight:600, color:T.red, marginBottom:8, fontFamily:FA}}>Best Days Missed While in Cash</div>
-              <div style={{display:"flex", gap:16, marginBottom:8}}>
-                <div><div style={{fontSize:22, fontWeight:700, fontFamily:FM, color:T.text}}>{missed10}<span style={{fontSize:13, color:T.textMuted}}>/{10}</span></div><div style={{fontSize:9.5, color:T.textMuted}}>Top 10 days</div></div>
-                <div><div style={{fontSize:22, fontWeight:700, fontFamily:FM, color:T.text}}>{missed20}<span style={{fontSize:13, color:T.textMuted}}>/{20}</span></div><div style={{fontSize:9.5, color:T.textMuted}}>Top 20 days</div></div>
-                <div><div style={{fontSize:22, fontWeight:700, fontFamily:FM, color:T.text}}>{missed30}<span style={{fontSize:13, color:T.textMuted}}>/{30}</span></div><div style={{fontSize:9.5, color:T.textMuted}}>Top 30 days</div></div>
+            {/* ── Best & Worst Days Combined ── */}
+            <div style={{background:T.bgCard, borderRadius:10, padding:"14px 16px", border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.gold,
+                           fontWeight:700, marginBottom:14, fontFamily:FA}}>Key Days While in Cash</div>
+
+              {/* Best Days Missed */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11, fontWeight:600, color:T.red, marginBottom:8, fontFamily:FA}}>Best Days Missed</div>
+                <div style={{display:"flex", gap:16}}>
+                  <div><div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.text}}>{missed10}<span style={{fontSize:12, color:T.textMuted}}>/{10}</span></div><div style={{fontSize:9, color:T.textMuted}}>Top 10</div></div>
+                  <div><div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.text}}>{missed20}<span style={{fontSize:12, color:T.textMuted}}>/{20}</span></div><div style={{fontSize:9, color:T.textMuted}}>Top 20</div></div>
+                  <div><div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.text}}>{missed30}<span style={{fontSize:12, color:T.textMuted}}>/{30}</span></div><div style={{fontSize:9, color:T.textMuted}}>Top 30</div></div>
+                </div>
               </div>
+
+              {/* Worst Days Avoided */}
+              <div style={{borderTop:`1px solid ${T.borderSub}`, paddingTop:12, marginBottom:10}}>
+                <div style={{fontSize:11, fontWeight:600, color:T.sage, marginBottom:8, fontFamily:FA}}>Worst Days Avoided</div>
+                <div style={{display:"flex", gap:16}}>
+                  <div><div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.text}}>{avoided10}<span style={{fontSize:12, color:T.textMuted}}>/{10}</span></div><div style={{fontSize:9, color:T.textMuted}}>Top 10</div></div>
+                  <div><div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.text}}>{avoided20}<span style={{fontSize:12, color:T.textMuted}}>/{20}</span></div><div style={{fontSize:9, color:T.textMuted}}>Top 20</div></div>
+                  <div><div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.text}}>{avoided30}<span style={{fontSize:12, color:T.textMuted}}>/{30}</span></div><div style={{fontSize:9, color:T.textMuted}}>Top 30</div></div>
+                </div>
+              </div>
+
+              {/* Collapsible detail list */}
               {missedList.length > 0 && (
-                <div style={{borderTop:`1px solid ${T.borderSub}`, paddingTop:8, maxHeight:120, overflowY:"auto"}}>
-                  <div style={{fontSize:9.5, color:T.textMuted, marginBottom:4}}>Missed best days:</div>
-                  {missedList.map((d, i) => (
-                    <div key={i} style={{display:"flex", justifyContent:"space-between", fontSize:11, fontFamily:FM, padding:"1px 0"}}>
-                      <span style={{color:T.textSec}}>{fmD(d.date)}</span>
-                      <span style={{color:T.green, fontWeight:600}}>+{(d.ret*100).toFixed(2)}%</span>
+                <div style={{borderTop:`1px solid ${T.borderSub}`, paddingTop:8}}>
+                  <button onClick={() => setShowDayDetail(!showDayDetail)}
+                          style={{background:"none", border:"none", cursor:"pointer", padding:0,
+                                  fontSize:10.5, color:T.goldDim, fontFamily:FA, fontWeight:600,
+                                  display:"flex", alignItems:"center", gap:4}}>
+                    <span style={{fontSize:8, transition:"transform 0.2s", display:"inline-block",
+                                  transform:showDayDetail ? "rotate(90deg)" : "rotate(0deg)"}}>▶</span>
+                    {showDayDetail ? "Hide" : "Show"} missed best days
+                  </button>
+                  {showDayDetail && (
+                    <div style={{marginTop:8, maxHeight:140, overflowY:"auto"}}>
+                      {missedList.map((d, i) => (
+                        <div key={i} style={{display:"flex", justifyContent:"space-between", fontSize:11, fontFamily:FM, padding:"2px 0"}}>
+                          <span style={{color:T.textSec}}>{fmD(d.date)}</span>
+                          <span style={{color:T.green, fontWeight:600}}>+{(d.ret*100).toFixed(2)}%</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
               {missedList.length === 0 && (
-                <div style={{fontSize:11, color:T.sage, fontStyle:"italic"}}>No top-20 days missed — strategy was invested</div>
+                <div style={{fontSize:11, color:T.sage, fontStyle:"italic", borderTop:`1px solid ${T.borderSub}`, paddingTop:8}}>
+                  No top-20 best days missed — strategy was invested
+                </div>
               )}
             </div>
 
-            {/* Worst Days Avoided */}
-            <div style={{background:T.bgCard, borderRadius:10, padding:"12px 14px", border:`1px solid ${T.border}`}}>
-              <div style={{fontSize:11, fontWeight:600, color:T.sage, marginBottom:8, fontFamily:FA}}>Worst Days Avoided While in Cash</div>
-              <div>
-                <div style={{fontSize:22, fontWeight:700, fontFamily:FM, color:T.text}}>
-                  {avoided20}<span style={{fontSize:13, color:T.textMuted}}>/{20}</span>
+            {/* ── Max Drawdown ── */}
+            <div style={{background:T.bgCard, borderRadius:10, padding:"14px 16px", border:`1px solid ${T.border}`,
+                         display:"flex", flexDirection:"column"}}>
+              <div style={{fontSize:10, textTransform:"uppercase", letterSpacing:"0.1em", color:T.gold,
+                           fontWeight:700, marginBottom:14, fontFamily:FA}}>Max Drawdown</div>
+
+              <div style={{display:"flex", gap:20, marginBottom:16, flex:1, alignItems:"flex-start"}}>
+                <div style={{flex:1, textAlign:"center"}}>
+                  <div style={{fontSize:28, fontWeight:700, fontFamily:FM, color:T.red, lineHeight:1.1}}>{(bhMaxDD*100).toFixed(1)}%</div>
+                  <div style={{fontSize:10, color:T.textMuted, marginTop:4}}>Buy & Hold</div>
                 </div>
-                <div style={{fontSize:9.5, color:T.textMuted, marginBottom:10}}>of 20 worst days avoided</div>
+                <div style={{flex:1, textAlign:"center"}}>
+                  <div style={{fontSize:28, fontWeight:700, fontFamily:FM, color:pMaxDD < bhMaxDD ? T.sage : T.red, lineHeight:1.1}}>{(pMaxDD*100).toFixed(1)}%</div>
+                  <div style={{fontSize:10, color:T.textMuted, marginTop:4}}>Timing Strategy</div>
+                </div>
               </div>
-              <div style={{borderTop:`1px solid ${T.borderSub}`, paddingTop:8}}>
-                <div style={{fontSize:11, color:T.textSec, lineHeight:1.7}}>
-                  <div><span style={{fontWeight:600, color:T.gold}}>Max Drawdown Comparison</span></div>
-                  <div style={{display:"flex", gap:16, marginTop:6}}>
-                    <div><div style={{fontSize:18, fontWeight:700, fontFamily:FM, color:T.red}}>{(bhMaxDD*100).toFixed(1)}%</div><div style={{fontSize:9.5, color:T.textMuted}}>Buy & Hold</div></div>
-                    <div><div style={{fontSize:18, fontWeight:700, fontFamily:FM, color:pMaxDD < bhMaxDD ? T.sage : T.red}}>{(pMaxDD*100).toFixed(1)}%</div><div style={{fontSize:9.5, color:T.textMuted}}>Timing Strategy</div></div>
-                    <div><div style={{fontSize:18, fontWeight:700, fontFamily:FM, color:bhMaxDD > pMaxDD ? T.sage : T.red}}>{((bhMaxDD-pMaxDD)*100).toFixed(1)}pp</div><div style={{fontSize:9.5, color:T.textMuted}}>{bhMaxDD > pMaxDD ? "reduction" : "increase"}</div></div>
-                  </div>
+
+              <div style={{borderTop:`1px solid ${T.borderSub}`, paddingTop:12, textAlign:"center"}}>
+                <div style={{fontSize:24, fontWeight:700, fontFamily:FM, lineHeight:1.1,
+                             color:bhMaxDD > pMaxDD ? T.sage : T.red}}>
+                  {((bhMaxDD-pMaxDD)*100).toFixed(1)}<span style={{fontSize:14}}>pp</span>
+                </div>
+                <div style={{fontSize:10.5, color:T.textMuted, marginTop:4}}>
+                  {bhMaxDD > pMaxDD ? "drawdown reduction" : bhMaxDD < pMaxDD ? "drawdown increase" : "no difference"}
                 </div>
               </div>
             </div>

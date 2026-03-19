@@ -266,8 +266,12 @@ function simulate(daily, o) {
 
   // Worst days analysis
   var sortedWorst = dailyRets.slice().sort(function(a,b) { return a.ret - b.ret; });
+  var worst10 = sortedWorst.slice(0,10);
   var worst20 = sortedWorst.slice(0,20);
+  var worst30 = sortedWorst.slice(0,30);
+  var avoided10 = worst10.filter(function(d) { return !d.wasIn; }).length;
   var avoided20 = worst20.filter(function(d) { return !d.wasIn; }).length;
+  var avoided30 = worst30.filter(function(d) { return !d.wasIn; }).length;
 
   // Final values
   if (!iM && dS > 0) oD.push(dS);
@@ -297,7 +301,9 @@ function simulate(daily, o) {
     missed20: missed20,
     missed30: missed30,
     missedList: missedList,
-    avoided20: avoided20
+    avoided10: avoided10,
+    avoided20: avoided20,
+    avoided30: avoided30
   };
 }
 
