@@ -333,7 +333,8 @@ function App() {
                        {value:"Buy & Hold", type:"line", color:T.gold},
                        {value:"Your Portfolio", type:"line", color:pC},
                        {value:"Sell", type:"triangle", color:T.red},
-                       {value:"Buy", type:"triangle", color:T.green}
+                       {value:"Buy", type:"triangle", color:T.green},
+                       {value:"Recession", type:"square", color:T.recFill}
                      ]}/>
             </ComposedChart>
           </ResponsiveContainer>
