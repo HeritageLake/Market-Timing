@@ -65,3 +65,45 @@ input[type=range]::-moz-range-thumb {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ─── Responsive grid layouts ─────────────────────────── */
+
+/* Two-column grid that stacks on mobile */
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Four-column grid (rolling analysis stats) */
+.grid-4col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+/* Summary cards */
+.grid-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+/* Tax rates row */
+.grid-tax {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 28px;
+}
+
+@media (max-width: 640px) {
+  .grid-2col,
+  .grid-summary,
+  .grid-tax {
+    grid-template-columns: 1fr;
+  }
+  .grid-4col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
