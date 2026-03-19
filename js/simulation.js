@@ -272,6 +272,9 @@ function simulate(daily, o) {
   var avoided10 = worst10.filter(function(d) { return !d.wasIn; }).length;
   var avoided20 = worst20.filter(function(d) { return !d.wasIn; }).length;
   var avoided30 = worst30.filter(function(d) { return !d.wasIn; }).length;
+  var avoidedList = worst20.filter(function(d) { return !d.wasIn; }).map(function(d) {
+    return {date:d.date, ret:d.ret};
+  });
 
   // Final values
   if (!iM && dS > 0) oD.push(dS);
@@ -303,7 +306,8 @@ function simulate(daily, o) {
     missedList: missedList,
     avoided10: avoided10,
     avoided20: avoided20,
-    avoided30: avoided30
+    avoided30: avoided30,
+    avoidedList: avoidedList
   };
 }
 
