@@ -501,7 +501,7 @@ function App() {
 
           {/* Rolling Analysis */}
           <div style={{borderTop:`1px solid ${T.borderSub}`, paddingTop:14}}>
-            <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:12}}>
+            <div style={{display:"flex", alignItems:"center", gap:12, marginBottom:12, flexWrap:"wrap"}}>
               <span style={{fontSize:11, fontWeight:600, color:T.gold, fontFamily:FA}}>Rolling Period Analysis</span>
               <div style={{display:"flex", gap:4}}>
                 {[10,15,20,25,30].map(y => (
@@ -540,12 +540,12 @@ function App() {
                   </div>
                   <div style={{textAlign:"center", background:T.bgCard, borderRadius:8, padding:"10px 8px", border:`1px solid ${T.border}`}}>
                     <div style={{fontSize:9.5, color:T.textMuted, marginBottom:4}}>Best Edge</div>
-                    <div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.sage}}>+{(rolling.bestTiming*100).toFixed(2)}%</div>
+                    <div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:rolling.bestTiming >= 0 ? T.sage : T.red}}>{rolling.bestTiming >= 0 ? "+" : ""}{(rolling.bestTiming*100).toFixed(2)}%</div>
                     <div style={{fontSize:9, color:T.textMuted}}>CAGR vs B&H</div>
                   </div>
                   <div style={{textAlign:"center", background:T.bgCard, borderRadius:8, padding:"10px 8px", border:`1px solid ${T.border}`}}>
                     <div style={{fontSize:9.5, color:T.textMuted, marginBottom:4}}>Worst Drag</div>
-                    <div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:T.red}}>{(rolling.worstTiming*100).toFixed(2)}%</div>
+                    <div style={{fontSize:20, fontWeight:700, fontFamily:FM, color:rolling.worstTiming >= 0 ? T.sage : T.red}}>{rolling.worstTiming >= 0 ? "+" : ""}{(rolling.worstTiming*100).toFixed(2)}%</div>
                     <div style={{fontSize:9, color:T.textMuted}}>CAGR vs B&H</div>
                   </div>
                 </div>
