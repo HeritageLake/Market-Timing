@@ -1,18 +1,17 @@
 /**
- * Heritage Lake Advisors — Market Timing Simulator
+ * Heritage Lake Advisors - Market Timing Simulator
  * Simulation engine, constants, and utilities
  *
- * This file contains no React or JSX — it's pure JavaScript
+ * This file contains no React or JSX - pure JavaScript
  * that can be tested independently.
  */
 
-// ─── Font Stacks ────────────────────────────────────────────
+// --- Font Stacks ---
 var FM = "'JetBrains Mono','Menlo',monospace";
 var FA = "'Raleway','Helvetica Neue',sans-serif";
 var FS = "'Libre Baskerville','Georgia',serif";
 
-// ─── Theme Definitions ─────────────────────────────────────
-// Logo paths (externalized from base64)
+// --- Theme Definitions ---
 var LOGO_FULL = "images/logo-full.png";
 var LOGO_INV  = "images/logo-inverse.png";
 
@@ -41,9 +40,20 @@ var THEMES = {
   }
 };
 
-// ─── Constants ──────────────────────────────────────────────
+// --- Constants ---
 var INI = 100000;
-var SYS = [1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020];
+
+// --- Index Metadata ---
+var INDEX_META = {
+  sp500:  { label:"S&P 500",     startYears:[1975,1980,1985,1990,1995,2000,2005,2010,2015,2020], defaultYield:1.5 },
+  djia:   { label:"DJIA",        startYears:[1975,1980,1985,1990,1995,2000,2005,2010,2015,2020], defaultYield:2.0 },
+  ndx:    { label:"Nasdaq 100",  startYears:[1986,1990,1995,2000,2005,2010,2015,2020],           defaultYield:0.7 },
+  agg:    { label:"US Agg Bond", startYears:[1987,1990,1995,2000,2005,2010,2015,2020],           defaultYield:0.0 },
+  blend60:{ label:"60/40",       startYears:[1987,1990,1995,2000,2005,2010,2015,2020],           defaultYield:0.0 }
+};
+
+// Tab display order
+var INDEX_TABS = ["sp500","djia","ndx","agg","blend60"];
 
 // Recession year-months (NBER)
 var REC_YM = [
@@ -52,11 +62,13 @@ var REC_YM = [
   ["2007-12","2009-06"], ["2020-02","2020-04"]
 ];
 
-// ─── Helpers ────────────────────────────────────────────────
+// --- Helpers ---
 
 /** Daily dividend rate from yearly yield */
-function gdr(d) {
-  return (DY[+d.slice(0,4)] || 1.5) / 100 / 252;
+function gdr(d, divYields, defaultYield) {
+  var dy = divYields ? divYields[+d.slice(0,4)] : null;
+  if (dy == null) dy = defaultYield || 1.5;
+  return dy / 100 / 252;
 }
 
 /** Format dollar amount */
@@ -76,13 +88,12 @@ function fmD(d) {
   return new Date(d + "T12:00:00").toLocaleDateString("en-US", {month:"short", year:"numeric"});
 }
 
-// ─── Data Processing ────────────────────────────────────────
+// --- Data Processing ---
 
 /** Convert raw [YYYYMMDD, price] pairs into daily objects, filtered by start year */
 function buildDaily(raw, sy) {
   return raw.filter(function(r) {
-    var y = Math.floor(r[0] / 10000);
-    return y >= sy;
+    return Math.floor(r[0] / 10000) >= sy;
   }).map(function(r) {
     var d = r[0], p = r[1];
     var y = Math.floor(d / 10000);
@@ -93,6 +104,61 @@ function buildDaily(raw, sy) {
       price: p
     };
   });
+}
+
+/**
+ * Build a blended daily price series from two raw daily arrays.
+ * Aligns by date, normalizes both to starting value,
+ * then blends daily returns by weight. Returns raw [YYYYMMDD, price] pairs starting at 100.
+ */
+function buildBlend(rawA, rawB, wA) {
+  var wB = 1 - wA;
+  var bMap = {};
+  rawB.forEach(function(r) { bMap[r[0]] = r[1]; });
+  var shared = rawA.filter(function(r) { return bMap[r[0]] != null; });
+  if (shared.length < 2) return [];
+  var prevA = shared[0][1], prevB = bMap[shared[0][0]], cumVal = 100;
+  var blended = [[shared[0][0], 100]];
+  for (var i = 1; i < shared.length; i++) {
+    var d = shared[i][0], pA = shared[i][1], pB = bMap[d];
+    var retA = pA / prevA - 1;
+    var retB = pB / prevB - 1;
+    cumVal *= (1 + wA * retA + wB * retB);
+    blended.push([d, Math.round(cumVal * 100) / 100]);
+    prevA = pA;
+    prevB = pB;
+  }
+  return blended;
+}
+
+/**
+ * Get raw daily prices and dividend yields for any index key.
+ * Handles the 60/40 blend by computing it from sp500 + agg at runtime.
+ */
+function getIndexData(indexKey) {
+  var data = window.MARKET_DATA;
+  if (!data) return null;
+
+  if (indexKey === "blend60") {
+    if (!data.sp500 || !data.agg) return null;
+    var blended = buildBlend(data.sp500.dailyPrices, data.agg.dailyPrices, 0.6);
+    if (blended.length === 0) return null;
+    var blendDY = {};
+    var spDY = data.sp500.dividendYields || {};
+    var agDY = data.agg.dividendYields || {};
+    Object.keys(spDY).forEach(function(yr) {
+      blendDY[yr] = (spDY[yr] || 0) * 0.6 + (agDY[yr] || 0) * 0.4;
+    });
+    return {dailyPrices: blended, dividendYields: blendDY, defaultYield: 0.9};
+  }
+
+  if (!data[indexKey]) return null;
+  var meta = INDEX_META[indexKey] || {};
+  return {
+    dailyPrices: data[indexKey].dailyPrices,
+    dividendYields: data[indexKey].dividendYields || {},
+    defaultYield: meta.defaultYield || 1.5
+  };
 }
 
 /** Sample one data point per month for charting */
@@ -127,71 +193,44 @@ function mapRecessions(chartData, startYear) {
   return result;
 }
 
-// ─── Core Simulation ────────────────────────────────────────
+// --- Core Simulation ---
 
-/**
- * Run a market timing simulation on daily price data.
- *
- * @param {Array} daily - Array of {date, price} objects
- * @param {Object} o    - Options: sellPct, buyPct, minDays, cashRate,
- *                         stRate, ltRate, niit, reinvestDivs
- * @returns {Object}    - Full simulation results
- */
 function simulate(daily, o) {
   var sellPct = o.sellPct, buyPct = o.buyPct, minDays = o.minDays;
   var cashRate = o.cashRate, stRate = o.stRate, ltRate = o.ltRate;
   var niit = o.niit, reinvestDivs = o.reinvestDivs;
-  var buyStrategy = o.buyStrategy || "pctOffLow";  // "pctOffLow" | "backToExit" | "newHigh"
+  var buyStrategy = o.buyStrategy || "pctOffLow";
+  var divYields = o.divYields || null;
+  var defaultYield = o.defaultYield || 1.5;
 
   var eLt = ltRate + (niit ? 3.8 : 0);
   var st = daily[0].price;
 
-  // Buy & Hold tracking
   var bS = INI / st, bB = INI;
 
-  // Timing strategy state
-  var iM = true;           // in market
-  var sh = INI / st;       // shares held
-  var ca = 0;              // cash amount
-  var ath = st;            // all-time high
-  var psL = Infinity;      // post-sale low
-  var dS = 0;              // days since sell
-  var bas = INI;           // cost basis
-  var bD = daily[0].date;  // basis date
-  var tP = 0;              // total tax paid
-  var tDO = 0;             // total days out of market
-  var oD = [];             // out-days per exit
-  var sellPrice = 0;       // price at last sell (for backToExit)
-  var athAtSell = 0;       // all-time high at last sell (for newHigh)
+  var iM = true, sh = INI / st, ca = 0, ath = st, psL = Infinity;
+  var dS = 0, bas = INI, bD = daily[0].date, tP = 0, tDO = 0;
+  var oD = [];
+  var sellPrice = 0, athAtSell = 0;
 
-  var ev = [];                      // buy/sell events
-  var dR = new Array(daily.length); // daily results
-
-  // Max drawdown tracking
-  var bhPeak = INI, bhMaxDD = 0;
-  var pPeak = INI, pMaxDD = 0;
-
-  // Daily returns + in/out tracking for best days missed
+  var ev = [], dR = new Array(daily.length);
+  var bhPeak = INI, bhMaxDD = 0, pPeak = INI, pMaxDD = 0;
   var dailyRets = [];
 
   for (var i = 0; i < daily.length; i++) {
     var date = daily[i].date, price = daily[i].price;
-    var dr = reinvestDivs ? gdr(date) : 0;
+    var dr = reinvestDivs ? gdr(date, divYields, defaultYield) : 0;
 
-    // Buy & Hold: reinvest dividends
     bS *= (1 + dr);
     var bV = bS * price;
 
-    // Track daily return
     var ret = i > 0 ? (price / daily[i-1].price - 1) : 0;
     var wasIn = iM;
 
     if (iM) {
-      // In market: reinvest dividends
       sh *= (1 + dr);
       ath = Math.max(ath, price);
 
-      // Check sell trigger
       if (sellPct > 0 && (ath - price) / ath >= sellPct / 100 && i > 0) {
         var pr = sh * price;
         var g = pr - bas;
@@ -205,17 +244,15 @@ function simulate(daily, o) {
         sh = 0;
         dS = 0;
         psL = price;
-        sellPrice = price;   // remember exit price
-        athAtSell = ath;     // remember ATH at time of sell
+        sellPrice = price;
+        athAtSell = ath;
       }
     } else {
-      // Out of market: earn cash interest
       ca *= (1 + cashRate / 100 / 252);
       dS++;
       tDO++;
       psL = Math.min(psL, price);
 
-      // Check buy trigger based on strategy
       var buyTriggered = false;
       if (dS >= minDays) {
         if (buyStrategy === "pctOffLow") {
@@ -243,7 +280,6 @@ function simulate(daily, o) {
     var pV = iM ? sh * price : ca;
     dR[i] = {date:date, price:price, bh:Math.round(bV), portfolio:Math.round(pV)};
 
-    // Max drawdown
     bhPeak = Math.max(bhPeak, bV);
     bhMaxDD = Math.max(bhMaxDD, (bhPeak - bV) / bhPeak);
     pPeak = Math.max(pPeak, pV);
@@ -252,31 +288,22 @@ function simulate(daily, o) {
     if (i > 0) dailyRets.push({idx:i, date:date, ret:ret, wasIn:wasIn});
   }
 
-  // Best days missed analysis
   var sortedRets = dailyRets.slice().sort(function(a,b) { return b.ret - a.ret; });
-  var top10 = sortedRets.slice(0,10);
-  var top20 = sortedRets.slice(0,20);
-  var top30 = sortedRets.slice(0,30);
-  var missed10 = top10.filter(function(d) { return !d.wasIn; }).length;
-  var missed20 = top20.filter(function(d) { return !d.wasIn; }).length;
-  var missed30 = top30.filter(function(d) { return !d.wasIn; }).length;
-  var missedList = top20.filter(function(d) { return !d.wasIn; }).map(function(d) {
+  var missed10 = sortedRets.slice(0,10).filter(function(d) { return !d.wasIn; }).length;
+  var missed20 = sortedRets.slice(0,20).filter(function(d) { return !d.wasIn; }).length;
+  var missed30 = sortedRets.slice(0,30).filter(function(d) { return !d.wasIn; }).length;
+  var missedList = sortedRets.slice(0,20).filter(function(d) { return !d.wasIn; }).map(function(d) {
     return {date:d.date, ret:d.ret};
   });
 
-  // Worst days analysis
   var sortedWorst = dailyRets.slice().sort(function(a,b) { return a.ret - b.ret; });
-  var worst10 = sortedWorst.slice(0,10);
-  var worst20 = sortedWorst.slice(0,20);
-  var worst30 = sortedWorst.slice(0,30);
-  var avoided10 = worst10.filter(function(d) { return !d.wasIn; }).length;
-  var avoided20 = worst20.filter(function(d) { return !d.wasIn; }).length;
-  var avoided30 = worst30.filter(function(d) { return !d.wasIn; }).length;
-  var avoidedList = worst20.filter(function(d) { return !d.wasIn; }).map(function(d) {
+  var avoided10 = sortedWorst.slice(0,10).filter(function(d) { return !d.wasIn; }).length;
+  var avoided20 = sortedWorst.slice(0,20).filter(function(d) { return !d.wasIn; }).length;
+  var avoided30 = sortedWorst.slice(0,30).filter(function(d) { return !d.wasIn; }).length;
+  var avoidedList = sortedWorst.slice(0,20).filter(function(d) { return !d.wasIn; }).map(function(d) {
     return {date:d.date, ret:d.ret};
   });
 
-  // Final values
   if (!iM && dS > 0) oD.push(dS);
   var fV = iM ? sh * daily[daily.length-1].price : ca;
   var bF = bS * daily[daily.length-1].price;
@@ -311,23 +338,15 @@ function simulate(daily, o) {
   };
 }
 
-// ─── Rolling Window Analysis ────────────────────────────────
+// --- Rolling Window Analysis ---
 
-/**
- * Run simulation across every possible N-year window, stepping by ~1 month.
- *
- * @param {Array}  allDaily - Full daily data from 1975
- * @param {Object} opts     - Simulation options
- * @param {number} winYrs   - Window size in years
- * @returns {Object|null}   - Rolling analysis results or null if insufficient data
- */
 function rollingAnalysis(allDaily, opts, winYrs) {
   var winDays = Math.round(winYrs * 252);
   if (allDaily.length < winDays + 10) return null;
 
   var timingWins = 0, total = 0, bestTiming = -Infinity, worstTiming = Infinity, bhWins = 0;
   var results = [];
-  var step = 21; // ~1 month in trading days
+  var step = 21;
 
   for (var s = 0; s <= allDaily.length - winDays; s += step) {
     var slice = allDaily.slice(s, s + winDays);
