@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Heritage Lake Advisors — Market Timing Analysis</title>
+<title>Heritage Lake Advisors - Market Timing Analysis</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Raleway:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
@@ -27,7 +27,7 @@
 <div id="root">
   <div class="loading-screen">
     <div class="loading-spinner"></div>
-    <div>Loading simulator…</div>
+    <div>Loading simulator...</div>
   </div>
 </div>
 
@@ -40,16 +40,17 @@
       return res.json();
     })
     .then(function(data) {
-      window.RAW_DAILY = data.dailyPrices;
-      window.DY = data.dividendYields;
-      console.log('Market data loaded:', window.RAW_DAILY.length, 'daily records');
+      window.MARKET_DATA = data;
+      var total = 0;
+      Object.keys(data).forEach(function(k) { total += data[k].dailyPrices.length; });
+      console.log('Market data loaded:', Object.keys(data).length, 'indexes,', total, 'total daily records');
     })
     .catch(function(err) {
       document.getElementById('root').innerHTML =
         '<div class="loading-screen" style="color:#c46b5e">' +
         '<div style="font-size:16px;font-weight:600">Failed to load market data</div>' +
         '<div style="font-size:12px;margin-top:8px;opacity:0.7">' + err.message + '</div>' +
-        '<div style="font-size:11px;margin-top:12px;opacity:0.5">Make sure data.json is in the same directory and you\'re using a web server (not file://)</div>' +
+        '<div style="font-size:11px;margin-top:12px;opacity:0.5">Make sure data.json is in the same directory and you are using a web server (not file://)</div>' +
         '</div>';
       throw err;
     });
@@ -58,7 +59,7 @@
 <!-- Simulation logic (pure functions, no JSX) -->
 <script src="js/simulation.js"></script>
 
-<!-- React application (JSX — requires Babel) -->
+<!-- React application (JSX - requires Babel) -->
 <script type="text/babel" data-presets="react" src="js/app.jsx"></script>
 </body>
 </html>
