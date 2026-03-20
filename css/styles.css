@@ -107,3 +107,28 @@ input[type=range]::-moz-range-thumb {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ─── Responsive header layout ────────────────────────── */
+
+.header-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.header-title {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .header-title {
+    order: 3;
+    flex: 0 0 100%;
+    margin-top: 4px;
+  }
+  .header-toggle {
+    margin-left: auto;
+  }
+}
