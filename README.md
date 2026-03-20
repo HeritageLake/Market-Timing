@@ -4,7 +4,7 @@ Interactive S&P 500 market timing analysis tool. Compares a buy-and-hold strateg
 
 **Repository:** [github.com/HeritageLake/Market-Timing](https://github.com/HeritageLake/Market-Timing)
 
-**Live URL:** _(update this after enabling GitHub Pages — see instructions below)_
+**Live URL:** [https://heritagelake.github.io/Market-Timing/](https://heritagelake.github.io/Market-Timing/)
 
 ---
 
